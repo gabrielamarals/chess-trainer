@@ -253,6 +253,64 @@ button#new-game-button:hover:not(:disabled) {
   background: #5a4431;
 }
 
+button#new-game-button.game-active {
+  background: #a94f3d;
+}
+
+button#new-game-button.game-active:hover:not(:disabled) {
+  background: #8e3e30;
+}
+
+button#new-game-button.game-finished {
+  background: #356b45;
+}
+
+button#new-game-button.game-finished:hover:not(:disabled) {
+  background: #285537;
+}
+
+.review-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.review-controls button,
+.history-current {
+  border: 1px solid #cfc7bd;
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  color: #504941;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.review-controls button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.history-current {
+  width: 100%;
+  margin-top: 0.55rem;
+  border-color: #8a745c;
+}
+
+.review-status {
+  margin: 0.55rem 0 0;
+  color: #795f12;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.board.is-reviewing {
+  box-shadow: 0 0 0 4px #c9a94f, 0 16px 35px rgb(48 36 24 / 18%);
+}
+
 h2 {
   margin-top: 1.5rem;
   font-size: 1rem;
@@ -359,13 +417,59 @@ h2 {
 .history {
   max-height: 280px;
   margin: 0;
-  padding-left: 1.5rem;
   overflow-y: auto;
   color: #504941;
 }
 
-.history li {
-  margin-bottom: 0.35rem;
+.history-row {
+  display: grid;
+  grid-template-columns: 1.7rem repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  align-items: stretch;
+  margin-bottom: 0.4rem;
+}
+
+.history-number {
+  padding-top: 0.45rem;
+  color: #81786e;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.history-move {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0.35rem 0.45rem;
+  background: #f5f1eb;
+  color: #302b27;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.history-move:hover:not(:disabled) {
+  border-color: #b9a98f;
+}
+
+.history-move.selected {
+  border-color: #9c7626;
+  background: #eee1b8;
+}
+
+.history-move.engine {
+  color: #5f5850;
+}
+
+.history-move small {
+  margin-top: 0.12rem;
+  color: #87631b;
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
 @media (max-width: 900px) {

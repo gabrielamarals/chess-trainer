@@ -55,7 +55,7 @@ def play_engine_turn() -> dict | None:
     if not analysis.best_move:
         return None
 
-    move = game.make_move(analysis.best_move)
+    move = game.make_move(analysis.best_move, actor="engine")
     return {
         "move": move.uci(),
         "san": game.history[-1]["san"],
@@ -98,7 +98,7 @@ def make_move(request: MoveRequest) -> dict:
     except StockfishNotConfigured as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
-    game.make_move(player_move.uci())
+    game.make_move(player_move.uci(), actor="human")
     move_analysis = build_move_analysis(
         board_before,
         player_move,

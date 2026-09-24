@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chess Trainer</title>
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/style.css?v=2" />
   </head>
   <body>
     <main class="app">
@@ -40,6 +40,15 @@
 
           <button id="new-game-button" type="button">Nova partida</button>
 
+          <div class="review-controls" aria-label="Navegação pelo histórico">
+            <button id="history-back" type="button">← Voltar</button>
+            <button id="history-forward" type="button">Avançar →</button>
+          </div>
+          <button id="history-current" class="history-current" type="button" hidden>
+            Voltar à posição atual
+          </button>
+          <p id="review-status" class="review-status" hidden></p>
+
           <section class="analysis-card" aria-labelledby="analysis-title">
             <div class="analysis-heading">
               <h2 id="analysis-title">Análise da sua jogada</h2>
@@ -70,11 +79,11 @@
           </section>
 
           <h2>Movimentos</h2>
-          <ol id="history" class="history"></ol>
+          <div id="history" class="history" role="list"></div>
         </aside>
       </section>
     </main>
 
-    <script src="/app.js"></script>
+    <script src="/app.js?v=2"></script>
   </body>
 </html>

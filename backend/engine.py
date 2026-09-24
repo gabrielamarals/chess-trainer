@@ -8,6 +8,9 @@ import chess
 import chess.engine
 
 
+MATE_SCORE_CP = 100_000
+
+
 class StockfishNotConfigured(RuntimeError):
     """Indica que o executável do Stockfish não foi encontrado."""
 
@@ -46,11 +49,25 @@ DEFAULT_OPPONENT_RATING = 1500
 
 @dataclass
 class EngineAnalysis:
+    """Resultado normalizado para o ponto de vista das brancas."""
+
     evaluation_cp: int | None
     mate_in: int | None
     best_move: str | None
     principal_variation: list[str]
     depth: int | None
+
+    def evaluation_for(self, color: chess.Color) -> int | None:
+        """Retorna a avaliação positiva quando a posição favorece a cor pedida."""
+        if self.evaluation_cp is None:
+            return None
+        return self.evaluation_cp if color == chess.WHITE else -self.evaluation_cp
+
+    def mate_for(self, color: chess.Color) -> int | None:
+        """Retorna o score de mate pela perspectiva da cor pedida."""
+        if self.mate_in is None:
+            return None
+        return self.mate_in if color == chess.WHITE else -self.mate_in
 
     def as_dict(self) -> dict:
         return {
@@ -59,6 +76,7 @@ class EngineAnalysis:
             "best_move": self.best_move,
             "principal_variation": self.principal_variation,
             "depth": self.depth,
+            "perspective": "white",
         }
 
 
@@ -196,7 +214,7 @@ class StockfishEngine:
             principal_variation.insert(0, best_move)
 
         return EngineAnalysis(
-            evaluation_cp=score.score(mate_score=100000) if score else None,
+            evaluation_cp=score.score(mate_score=MATE_SCORE_CP) if score else None,
             mate_in=score.mate() if score else None,
             best_move=best_move.uci() if best_move else None,
             principal_variation=[move.uci() for move in principal_variation],

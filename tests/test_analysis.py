@@ -5,7 +5,7 @@ import chess
 
 from backend.analysis import build_move_analysis, classify_move
 from backend.coach import build_coach_prompt
-from backend.engine import EngineAnalysis
+from backend.engine import MATE_SCORE_CP, EngineAnalysis
 
 
 def engine_analysis(
@@ -68,6 +68,29 @@ class MoveAnalysisTest(unittest.TestCase):
         self.assertEqual(result["evaluation"]["before_cp"], -30)
         self.assertEqual(result["evaluation"]["after_cp"], -170)
         self.assertEqual(result["evaluation"]["loss_cp"], 140)
+
+    def test_improvement_is_never_counted_as_loss(self) -> None:
+        board = chess.Board()
+        move = chess.Move.from_uci("e2e4")
+        before = engine_analysis(30, "d2d4", ["d2d4"])
+        after = engine_analysis(80, "e7e5", ["e7e5"])
+
+        result = build_move_analysis(board, move, before, after)
+
+        self.assertEqual(result["evaluation"]["loss_cp"], 0)
+
+    def test_mate_score_is_normalized_for_black(self) -> None:
+        analysis = EngineAnalysis(
+            evaluation_cp=MATE_SCORE_CP,
+            mate_in=4,
+            best_move=None,
+            principal_variation=[],
+            depth=18,
+        )
+
+        self.assertEqual(analysis.evaluation_for(chess.WHITE), MATE_SCORE_CP)
+        self.assertEqual(analysis.evaluation_for(chess.BLACK), -MATE_SCORE_CP)
+        self.assertEqual(analysis.mate_for(chess.BLACK), -4)
 
     def test_coach_prompt_contains_only_structured_context(self) -> None:
         analysis = {"move": {"san": "e4"}, "classification": {"label": "Boa"}}

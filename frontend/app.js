@@ -31,6 +31,11 @@ const historyElement = document.querySelector("#history");
 const playerColorElement = document.querySelector("#player-color");
 const opponentRatingElement = document.querySelector("#opponent-rating");
 const newGameButton = document.querySelector("#new-game-button");
+const historyBackButton = document.querySelector("#history-back");
+const historyForwardButton = document.querySelector("#history-forward");
+const historyCurrentButton = document.querySelector("#history-current");
+const reviewStatusElement = document.querySelector("#review-status");
+const analysisTitleElement = document.querySelector("#analysis-title");
 const analysisClassificationElement = document.querySelector("#analysis-classification");
 const analysisSummaryElement = document.querySelector("#analysis-summary");
 const analysisDetailsElement = document.querySelector("#analysis-details");
@@ -47,9 +52,37 @@ let invalidTarget = null;
 let invalidFeedbackTimer = null;
 let lastMoveOverride = null;
 let isThinking = false;
+let reviewIndex = 0;
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function initialHistory() {
+  return [{
+    ply: 0,
+    actor: null,
+    color: null,
+    uci: null,
+    san: null,
+    fen_before: INITIAL_FEN,
+    fen_after: INITIAL_FEN,
+    classification: null,
+    analysis: null,
+  }];
+}
+
+function latestHistoryIndex() {
+  return Math.max(0, gameState.history.length - 1);
+}
+
+function isReviewMode() {
+  return reviewIndex < latestHistoryIndex();
+}
+
+function displayedFen() {
+  if (!isReviewMode()) return gameState.fen;
+  return gameState.history[reviewIndex]?.fen_after || INITIAL_FEN;
 }
 
 function formatEvaluation(centipawns, mateIn = null) {
@@ -62,17 +95,34 @@ function formatEvaluation(centipawns, mateIn = null) {
 }
 
 function renderAnalysis() {
-  const analysis = gameState.last_analysis;
+  const selectedEntry = gameState.history[reviewIndex];
+  const analysedEntry = isReviewMode()
+    ? selectedEntry
+    : [...gameState.history].reverse().find((entry) => entry.actor === "human");
+  const analysis = analysedEntry?.analysis;
+
   if (!analysis) {
     analysisClassificationElement.hidden = true;
     analysisDetailsElement.hidden = true;
     analysisLineElement.hidden = true;
     analysisSummaryElement.className = "analysis-empty";
-    analysisSummaryElement.textContent = "Faça um movimento para receber a avaliação do Stockfish.";
+    if (isReviewMode() && selectedEntry?.actor === "engine") {
+      analysisTitleElement.textContent = "Movimento do Stockfish";
+      analysisSummaryElement.textContent = `${selectedEntry.san} não recebe classificação.`;
+    } else if (isReviewMode() && reviewIndex === 0) {
+      analysisTitleElement.textContent = "Posição inicial";
+      analysisSummaryElement.textContent = "Ainda não havia movimento para analisar.";
+    } else {
+      analysisTitleElement.textContent = "Análise da sua jogada";
+      analysisSummaryElement.textContent = "Faça um movimento para receber a avaliação do Stockfish.";
+    }
     return;
   }
 
-  const classification = analysis.classification;
+  analysisTitleElement.textContent = isReviewMode()
+    ? `Análise de ${analysedEntry.san}`
+    : `Análise da sua última jogada: ${analysedEntry.san}`;
+  const classification = analysedEntry.classification;
   const evaluation = analysis.evaluation;
   const allowedClasses = new Set([
     "best", "excellent", "good", "inaccuracy", "mistake", "blunder", "unrated",
@@ -210,7 +260,8 @@ function isCapture(source, target, position) {
 }
 
 function currentLastMove() {
-  return lastMoveOverride || gameState.history.at(-1)?.move || null;
+  if (lastMoveOverride && !isReviewMode()) return lastMoveOverride;
+  return gameState.history[reviewIndex]?.uci || null;
 }
 
 function applySquareState(square, name, position) {
@@ -233,12 +284,16 @@ function updateSquareHighlights() {
 }
 
 function renderBoard() {
-  const position = parseFen(gameState.fen);
+  const position = parseFen(displayedFen());
   const lastMove = currentLastMove();
   const lastMoveSquares = lastMove ? [lastMove.slice(0, 2), lastMove.slice(2, 4)] : [];
-  const boardLocked = isThinking || gameState.is_game_over || gameState.turn !== gameState.player_color;
+  const boardLocked = isThinking
+    || isReviewMode()
+    || gameState.is_game_over
+    || gameState.turn !== gameState.player_color;
 
   boardElement.classList.toggle("is-locked", boardLocked);
+  boardElement.classList.toggle("is-reviewing", isReviewMode());
   boardElement.replaceChildren();
 
   displaySquareNames().forEach((name) => {
@@ -290,9 +345,9 @@ function renderBoard() {
 }
 
 function selectOrMove(name) {
-  if (isThinking || gameState.is_game_over || gameState.turn !== gameState.player_color) return;
+  if (isThinking || isReviewMode() || gameState.is_game_over || gameState.turn !== gameState.player_color) return;
 
-  const position = parseFen(gameState.fen);
+  const position = parseFen(displayedFen());
   const piece = position.get(name);
 
   if (!selectedSquare) {
@@ -336,7 +391,7 @@ function showInvalidMove(source, target) {
 }
 
 async function submitMove(source, target) {
-  if (isThinking) return;
+  if (isThinking || isReviewMode()) return;
 
   const matchingMove = legalMoveFor(source, target);
   if (!matchingMove) {
@@ -378,6 +433,7 @@ async function submitMove(source, target) {
     const updatedState = await response.json();
     if (updatedState.engine_move) await minimumThinkingTime;
     gameState = updatedState;
+    reviewIndex = latestHistoryIndex();
     isThinking = false;
     lastMoveOverride = null;
     renderGame();
@@ -390,27 +446,133 @@ async function submitMove(source, target) {
   }
 }
 
+function goToHistory(index) {
+  if (isThinking) return;
+  const latestIndex = latestHistoryIndex();
+  reviewIndex = Math.min(Math.max(index, 0), latestIndex);
+  selectedSquare = null;
+  invalidOrigin = null;
+  invalidTarget = null;
+  lastMoveOverride = null;
+  renderGame();
+}
+
+function renderReviewControls() {
+  const latestIndex = latestHistoryIndex();
+  const reviewing = isReviewMode();
+  historyBackButton.disabled = isThinking || reviewIndex <= 0;
+  historyForwardButton.disabled = isThinking || reviewIndex >= latestIndex;
+  historyCurrentButton.hidden = !reviewing;
+  historyCurrentButton.disabled = isThinking;
+  reviewStatusElement.hidden = !reviewing;
+  reviewStatusElement.textContent = reviewing
+    ? `Revisando posição ${reviewIndex} de ${latestIndex}`
+    : "";
+}
+
+function createHistoryMove(entry, index) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `history-move ${entry.actor}`;
+  button.classList.toggle("selected", reviewIndex === index);
+  button.disabled = isThinking;
+  button.setAttribute("role", "listitem");
+  button.setAttribute("aria-label", `${entry.san}, ${entry.actor === "human" ? "jogada do aluno" : "jogada do Stockfish"}`);
+
+  const moveText = document.createElement("span");
+  moveText.textContent = entry.san;
+  button.append(moveText);
+
+  if (entry.actor === "human" && entry.classification) {
+    const classification = document.createElement("small");
+    classification.textContent = entry.classification.label;
+    button.append(classification);
+  }
+
+  button.addEventListener("click", () => goToHistory(index));
+  return button;
+}
+
+function renderHistory() {
+  historyElement.replaceChildren();
+  const moves = gameState.history.slice(1);
+
+  for (let offset = 0; offset < moves.length; offset += 2) {
+    const row = document.createElement("div");
+    row.className = "history-row";
+
+    const number = document.createElement("span");
+    number.className = "history-number";
+    number.textContent = `${Math.floor(offset / 2) + 1}.`;
+    row.append(number);
+
+    const whiteEntry = moves[offset];
+    const blackEntry = moves[offset + 1];
+    if (whiteEntry) row.append(createHistoryMove(whiteEntry, offset + 1));
+    if (blackEntry) row.append(createHistoryMove(blackEntry, offset + 2));
+    historyElement.append(row);
+  }
+}
+
+function gameOverMessage() {
+  if (!gameState.is_game_over) return null;
+
+  if (gameState.winner === gameState.player_color) {
+    return {
+      title: "Você venceu!",
+      detail: gameState.termination === "checkmate"
+        ? "Xeque-mate — parabéns!"
+        : "A partida terminou com sua vitória.",
+    };
+  }
+
+  if (gameState.winner) {
+    return {
+      title: "Você perdeu",
+      detail: gameState.termination === "checkmate"
+        ? "Xeque-mate — o Stockfish venceu."
+        : "A partida terminou com a vitória do Stockfish.",
+    };
+  }
+
+  const drawReasons = {
+    stalemate: "Empate por afogamento.",
+    insufficient_material: "Empate por material insuficiente.",
+    seventyfive_moves: "Empate pela regra dos 75 lances.",
+    fivefold_repetition: "Empate por repetição da posição.",
+  };
+  return {
+    title: "Empate",
+    detail: drawReasons[gameState.termination] || "A partida terminou empatada.",
+  };
+}
+
 function renderGame() {
   renderBoard();
   renderAnalysis();
+  renderReviewControls();
   playerColorElement.value = gameState.player_color;
   opponentRatingElement.value = String(gameState.opponent_rating);
-  playerColorElement.disabled = isThinking;
-  opponentRatingElement.disabled = isThinking;
-  newGameButton.disabled = isThinking;
+  const settingsLocked = isThinking || isReviewMode();
+  playerColorElement.disabled = settingsLocked;
+  opponentRatingElement.disabled = settingsLocked;
+  newGameButton.disabled = settingsLocked;
+  const hasStarted = gameState.history.length > 1;
+  newGameButton.classList.toggle("game-active", hasStarted && !gameState.is_game_over);
+  newGameButton.classList.toggle("game-finished", gameState.is_game_over);
+  newGameButton.textContent = gameState.is_game_over ? "Jogar novamente" : "Nova partida";
 
-  if (isThinking) {
+  const finishedMessage = gameOverMessage();
+
+  if (isReviewMode()) {
+    turnElement.textContent = `Revisando posição ${reviewIndex} de ${latestHistoryIndex()}`;
+    messageElement.textContent = "Modo de revisão — movimentos bloqueados.";
+  } else if (isThinking) {
     turnElement.textContent = "Stockfish pensando...";
     messageElement.textContent = "Stockfish pensando...";
-  } else if (gameState.is_checkmate) {
-    turnElement.textContent = "Xeque-mate";
-    messageElement.textContent = "Xeque-mate";
-  } else if (gameState.is_stalemate) {
-    turnElement.textContent = "Empate por afogamento";
-    messageElement.textContent = "Empate por afogamento";
-  } else if (gameState.is_game_over) {
-    turnElement.textContent = "Partida encerrada";
-    messageElement.textContent = "Empate.";
+  } else if (finishedMessage) {
+    turnElement.textContent = finishedMessage.title;
+    messageElement.textContent = finishedMessage.detail;
   } else {
     turnElement.textContent = `Sua vez — ${gameState.player_color === "white" ? "brancas" : "pretas"}`;
     messageElement.textContent = gameState.is_check
@@ -418,12 +580,7 @@ function renderGame() {
       : "Selecione uma peça ou arraste-a para uma casa.";
   }
 
-  historyElement.replaceChildren();
-  gameState.history.forEach((entry) => {
-    const item = document.createElement("li");
-    item.textContent = entry.san;
-    historyElement.append(item);
-  });
+  renderHistory();
 }
 
 async function loadGame() {
@@ -432,8 +589,13 @@ async function loadGame() {
   selectedSquare = null;
   lastMoveOverride = null;
   isThinking = false;
+  reviewIndex = latestHistoryIndex();
   renderGame();
 }
+
+historyBackButton.addEventListener("click", () => goToHistory(reviewIndex - 1));
+historyForwardButton.addEventListener("click", () => goToHistory(reviewIndex + 1));
+historyCurrentButton.addEventListener("click", () => goToHistory(latestHistoryIndex()));
 
 newGameButton.addEventListener("click", async () => {
   if (isThinking) return;
@@ -454,10 +616,13 @@ newGameButton.addEventListener("click", async () => {
     is_checkmate: false,
     is_stalemate: false,
     is_game_over: false,
+    result: null,
+    winner: null,
+    termination: null,
     legal_moves: [],
-    history: [],
-    last_analysis: null,
+    history: initialHistory(),
   };
+  reviewIndex = 0;
   renderGame();
 
   try {
@@ -477,6 +642,7 @@ newGameButton.addEventListener("click", async () => {
     const updatedState = await response.json();
     if (updatedState.engine_move) await minimumThinkingTime;
     gameState = updatedState;
+    reviewIndex = latestHistoryIndex();
     isThinking = false;
     renderGame();
   } catch {

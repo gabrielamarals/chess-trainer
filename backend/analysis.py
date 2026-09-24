@@ -2,10 +2,40 @@ from __future__ import annotations
 
 import chess
 
-from .engine import EngineAnalysis
+from .engine import MATE_SCORE_CP, EngineAnalysis
 
 
-MATE_SCORE_CP = 100_000
+MOVE_CLASSIFICATION_THRESHOLDS = (
+    {
+        "max_loss_cp": 20,
+        "code": "excellent",
+        "label": "Excelente",
+        "reason": "A posição praticamente não perdeu valor.",
+    },
+    {
+        "max_loss_cp": 60,
+        "code": "good",
+        "label": "Boa",
+        "reason": "A perda de avaliação foi pequena.",
+    },
+    {
+        "max_loss_cp": 120,
+        "code": "inaccuracy",
+        "label": "Imprecisão",
+        "reason": "Havia uma continuação claramente mais precisa.",
+    },
+    {
+        "max_loss_cp": 250,
+        "code": "mistake",
+        "label": "Erro",
+        "reason": "A jogada piorou bastante a posição.",
+    },
+)
+BLUNDER_CLASSIFICATION = {
+    "code": "blunder",
+    "label": "Erro grave",
+    "reason": "A jogada provocou uma grande queda de avaliação.",
+}
 
 
 def classify_move(
@@ -41,35 +71,14 @@ def classify_move(
             "label": "Sem avaliação",
             "reason": "Não foi possível comparar as avaliações.",
         }
-    if loss_cp <= 20:
-        return {
-            "code": "excellent",
-            "label": "Excelente",
-            "reason": "A posição praticamente não perdeu valor.",
-        }
-    if loss_cp <= 60:
-        return {
-            "code": "good",
-            "label": "Boa",
-            "reason": "A perda de avaliação foi pequena.",
-        }
-    if loss_cp <= 120:
-        return {
-            "code": "inaccuracy",
-            "label": "Imprecisão",
-            "reason": "Havia uma continuação claramente mais precisa.",
-        }
-    if loss_cp <= 250:
-        return {
-            "code": "mistake",
-            "label": "Erro",
-            "reason": "A jogada piorou bastante a posição.",
-        }
-    return {
-        "code": "blunder",
-        "label": "Erro grave",
-        "reason": "A jogada provocou uma grande queda de avaliação.",
-    }
+    for threshold in MOVE_CLASSIFICATION_THRESHOLDS:
+        if loss_cp <= threshold["max_loss_cp"]:
+            return {
+                "code": threshold["code"],
+                "label": threshold["label"],
+                "reason": threshold["reason"],
+            }
+    return BLUNDER_CLASSIFICATION.copy()
 
 
 def build_move_analysis(
@@ -87,13 +96,11 @@ def build_move_analysis(
     is_castling = board_before.is_castling(move)
     board_after.push(move)
 
-    evaluation_before_white = _evaluation_or_terminal(analysis_before, board_before)
-    evaluation_after_white = _evaluation_or_terminal(analysis_after, board_after)
-    evaluation_before_player = _from_player_perspective(
-        evaluation_before_white, player_color
+    evaluation_before_player = _evaluation_for_player(
+        analysis_before, board_before, player_color
     )
-    evaluation_after_player = _from_player_perspective(
-        evaluation_after_white, player_color
+    evaluation_after_player = _evaluation_for_player(
+        analysis_after, board_after, player_color
     )
 
     if evaluation_before_player is None or evaluation_after_player is None:
@@ -132,12 +139,8 @@ def build_move_analysis(
             "before_pawns": _centipawns_to_pawns(evaluation_before_player),
             "after_pawns": _centipawns_to_pawns(evaluation_after_player),
             "loss_pawns": _centipawns_to_pawns(loss_cp),
-            "before_mate": _from_player_perspective(
-                analysis_before.mate_in, player_color
-            ),
-            "after_mate": _from_player_perspective(
-                analysis_after.mate_in, player_color
-            ),
+            "before_mate": analysis_before.mate_for(player_color),
+            "after_mate": analysis_after.mate_for(player_color),
         },
         "classification": classification,
         "principal_variation": {
@@ -189,26 +192,24 @@ def _move_to_san(board: chess.Board, move_text: str | None) -> str | None:
     return board.san(move) if move in board.legal_moves else None
 
 
-def _evaluation_or_terminal(
+def _evaluation_for_player(
     analysis: EngineAnalysis,
     board: chess.Board,
+    player_color: chess.Color,
 ) -> int | None:
-    if analysis.evaluation_cp is not None:
-        return analysis.evaluation_cp
+    evaluation = analysis.evaluation_for(player_color)
+    if evaluation is not None:
+        return evaluation
     if board.is_checkmate():
-        return -MATE_SCORE_CP if board.turn == chess.WHITE else MATE_SCORE_CP
+        white_evaluation = -MATE_SCORE_CP if board.turn == chess.WHITE else MATE_SCORE_CP
+        return (
+            white_evaluation
+            if player_color == chess.WHITE
+            else -white_evaluation
+        )
     if board.is_game_over():
         return 0
     return None
-
-
-def _from_player_perspective(
-    value: int | None,
-    player_color: chess.Color,
-) -> int | None:
-    if value is None:
-        return None
-    return value if player_color == chess.WHITE else -value
 
 
 def _centipawns_to_pawns(value: int | None) -> float | None:
