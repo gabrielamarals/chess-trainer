@@ -40,6 +40,13 @@ transforma esse valor em um perfil do Stockfish definido em
 O tempo mínimo visual de pensamento é independente da força e fica na constante
 `MIN_ENGINE_THINK_TIME`, em `frontend/app.js`.
 
+## Dois jogadores locais
+
+A aba "2 jogadores" permite jogar no mesmo computador sem chamar o Stockfish.
+Depois de cada lance, o tabuleiro gira automaticamente para deixar embaixo as
+peças da pessoa que vai jogar. Os lances continuam sendo validados no backend
+pelo `python-chess` e o histórico navegável permanece disponível.
+
 ## Análise da jogada
 
 Depois de cada movimento humano, o backend analisa a posição antes e depois com

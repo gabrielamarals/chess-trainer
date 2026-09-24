@@ -31,6 +31,9 @@ const historyElement = document.querySelector("#history");
 const playerColorElement = document.querySelector("#player-color");
 const opponentRatingElement = document.querySelector("#opponent-rating");
 const newGameButton = document.querySelector("#new-game-button");
+const engineSettingsElement = document.querySelector("#engine-settings");
+const engineModeButton = document.querySelector("#mode-engine");
+const localModeButton = document.querySelector("#mode-local");
 const historyBackButton = document.querySelector("#history-back");
 const historyForwardButton = document.querySelector("#history-forward");
 const historyCurrentButton = document.querySelector("#history-current");
@@ -106,7 +109,10 @@ function renderAnalysis() {
     analysisDetailsElement.hidden = true;
     analysisLineElement.hidden = true;
     analysisSummaryElement.className = "analysis-empty";
-    if (isReviewMode() && selectedEntry?.actor === "engine") {
+    if (gameState.mode === "local") {
+      analysisTitleElement.textContent = "Partida local";
+      analysisSummaryElement.textContent = "Neste modo, os movimentos não recebem análise do Stockfish.";
+    } else if (isReviewMode() && selectedEntry?.actor === "engine") {
       analysisTitleElement.textContent = "Movimento do Stockfish";
       analysisSummaryElement.textContent = `${selectedEntry.san} não recebe classificação.`;
     } else if (isReviewMode() && reviewIndex === 0) {
@@ -230,7 +236,9 @@ function applyVisualMove(fen, move) {
 }
 
 function displaySquareNames() {
-  const whitePerspective = gameState.player_color !== "black";
+  const whitePerspective = gameState.mode === "local"
+    ? gameState.turn === "white"
+    : gameState.player_color !== "black";
   const files = whitePerspective ? [..."abcdefgh"] : [..."hgfedcba"];
   const ranks = whitePerspective ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8];
   return ranks.flatMap((rank) => files.map((file) => `${file}${rank}`));
@@ -245,7 +253,10 @@ function squareColor(name) {
 function isPlayersPiece(piece) {
   if (!piece) return false;
   const isWhite = piece === piece.toUpperCase();
-  return gameState.player_color === (isWhite ? "white" : "black");
+  const pieceColor = isWhite ? "white" : "black";
+  return gameState.mode === "local"
+    ? gameState.turn === pieceColor
+    : gameState.player_color === pieceColor;
 }
 
 function legalMoveFor(source, target) {
@@ -290,7 +301,7 @@ function renderBoard() {
   const boardLocked = isThinking
     || isReviewMode()
     || gameState.is_game_over
-    || gameState.turn !== gameState.player_color;
+    || (gameState.mode === "engine" && gameState.turn !== gameState.player_color);
 
   boardElement.classList.toggle("is-locked", boardLocked);
   boardElement.classList.toggle("is-reviewing", isReviewMode());
@@ -345,7 +356,9 @@ function renderBoard() {
 }
 
 function selectOrMove(name) {
-  if (isThinking || isReviewMode() || gameState.is_game_over || gameState.turn !== gameState.player_color) return;
+  const waitingForEngine = gameState.mode === "engine"
+    && gameState.turn !== gameState.player_color;
+  if (isThinking || isReviewMode() || gameState.is_game_over || waitingForEngine) return;
 
   const position = parseFen(displayedFen());
   const piece = position.get(name);
@@ -400,7 +413,9 @@ async function submitMove(source, target) {
   }
 
   const previousState = gameState;
-  const minimumThinkingTime = sleep(MIN_ENGINE_THINK_TIME);
+  const minimumThinkingTime = gameState.mode === "engine"
+    ? sleep(MIN_ENGINE_THINK_TIME)
+    : Promise.resolve();
   selectedSquare = null;
   invalidOrigin = null;
   invalidTarget = null;
@@ -409,7 +424,7 @@ async function submitMove(source, target) {
   gameState = {
     ...gameState,
     fen: applyVisualMove(gameState.fen, matchingMove),
-    turn: gameState.player_color === "white" ? "black" : "white",
+    turn: gameState.turn === "white" ? "black" : "white",
   };
   renderGame();
 
@@ -477,7 +492,12 @@ function createHistoryMove(entry, index) {
   button.classList.toggle("selected", reviewIndex === index);
   button.disabled = isThinking;
   button.setAttribute("role", "listitem");
-  button.setAttribute("aria-label", `${entry.san}, ${entry.actor === "human" ? "jogada do aluno" : "jogada do Stockfish"}`);
+  const actorLabel = entry.actor === "engine"
+    ? "jogada do Stockfish"
+    : entry.actor === "local"
+      ? "jogada local"
+      : "jogada do aluno";
+  button.setAttribute("aria-label", `${entry.san}, ${actorLabel}`);
 
   const moveText = document.createElement("span");
   moveText.textContent = entry.san;
@@ -516,6 +536,18 @@ function renderHistory() {
 
 function gameOverMessage() {
   if (!gameState.is_game_over) return null;
+
+  if (gameState.mode === "local") {
+    const winnerName = gameState.winner === "white" ? "Brancas" : "Pretas";
+    if (gameState.winner) {
+      return {
+        title: `${winnerName} venceram!`,
+        detail: gameState.termination === "checkmate"
+          ? "Xeque-mate."
+          : "A partida terminou com uma vitória.",
+      };
+    }
+  }
 
   if (gameState.winner === gameState.player_color) {
     return {
@@ -557,6 +589,14 @@ function renderGame() {
   playerColorElement.disabled = settingsLocked;
   opponentRatingElement.disabled = settingsLocked;
   newGameButton.disabled = settingsLocked;
+  engineModeButton.disabled = settingsLocked;
+  localModeButton.disabled = settingsLocked;
+  const localMode = gameState.mode === "local";
+  engineSettingsElement.hidden = localMode;
+  engineModeButton.classList.toggle("active", !localMode);
+  localModeButton.classList.toggle("active", localMode);
+  engineModeButton.setAttribute("aria-selected", String(!localMode));
+  localModeButton.setAttribute("aria-selected", String(localMode));
   const hasStarted = gameState.history.length > 1;
   newGameButton.classList.toggle("game-active", hasStarted && !gameState.is_game_over);
   newGameButton.classList.toggle("game-finished", gameState.is_game_over);
@@ -574,7 +614,9 @@ function renderGame() {
     turnElement.textContent = finishedMessage.title;
     messageElement.textContent = finishedMessage.detail;
   } else {
-    turnElement.textContent = `Sua vez — ${gameState.player_color === "white" ? "brancas" : "pretas"}`;
+    turnElement.textContent = localMode
+      ? `Vez das ${gameState.turn === "white" ? "brancas" : "pretas"}`
+      : `Sua vez — ${gameState.player_color === "white" ? "brancas" : "pretas"}`;
     messageElement.textContent = gameState.is_check
       ? "Xeque!"
       : "Selecione uma peça ou arraste-a para uma casa.";
@@ -597,21 +639,24 @@ historyBackButton.addEventListener("click", () => goToHistory(reviewIndex - 1));
 historyForwardButton.addEventListener("click", () => goToHistory(reviewIndex + 1));
 historyCurrentButton.addEventListener("click", () => goToHistory(latestHistoryIndex()));
 
-newGameButton.addEventListener("click", async () => {
-  if (isThinking) return;
+async function startNewGame(mode = gameState.mode) {
+  if (isThinking || isReviewMode()) return;
 
   const playerColor = playerColorElement.value;
   const opponentRating = Number(opponentRatingElement.value);
-  const minimumThinkingTime = sleep(MIN_ENGINE_THINK_TIME);
+  const minimumThinkingTime = mode === "engine"
+    ? sleep(MIN_ENGINE_THINK_TIME)
+    : Promise.resolve();
   selectedSquare = null;
   lastMoveOverride = null;
-  isThinking = playerColor === "black";
+  isThinking = mode === "engine" && playerColor === "black";
   gameState = {
     ...gameState,
     fen: INITIAL_FEN,
     turn: "white",
     player_color: playerColor,
     opponent_rating: opponentRating,
+    mode,
     is_check: false,
     is_checkmate: false,
     is_stalemate: false,
@@ -629,7 +674,11 @@ newGameButton.addEventListener("click", async () => {
     const response = await fetch("/api/game/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_color: playerColor, opponent_rating: opponentRating }),
+      body: JSON.stringify({
+        player_color: playerColor,
+        opponent_rating: opponentRating,
+        mode,
+      }),
     });
 
     if (!response.ok) {
@@ -650,7 +699,11 @@ newGameButton.addEventListener("click", async () => {
     renderGame();
     messageElement.textContent = "Não foi possível conectar ao backend.";
   }
-});
+}
+
+newGameButton.addEventListener("click", () => startNewGame());
+engineModeButton.addEventListener("click", () => startNewGame("engine"));
+localModeButton.addEventListener("click", () => startNewGame("local"));
 
 loadGame().catch(() => {
   messageElement.textContent = "Não foi possível conectar ao backend.";

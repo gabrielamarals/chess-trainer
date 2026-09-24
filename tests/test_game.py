@@ -75,6 +75,18 @@ class GameHistoryTest(unittest.TestCase):
         self.assertIsNone(status["winner"])
         self.assertEqual(status["termination"], "insufficient_material")
 
+    def test_local_mode_records_both_sides_as_local_players(self) -> None:
+        game = ChessGame()
+        game.configure("white", 1500, mode="local")
+        game.make_move("e2e4", actor="local")
+        game.make_move("e7e5", actor="local")
+
+        self.assertEqual(game.status()["mode"], "local")
+        self.assertEqual(game.history[1]["actor"], "local")
+        self.assertEqual(game.history[2]["actor"], "local")
+        self.assertIsNone(game.history[1]["classification"])
+        self.assertIsNone(game.history[2]["classification"])
+
 
 if __name__ == "__main__":
     unittest.main()

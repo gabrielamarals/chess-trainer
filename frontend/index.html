@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chess Trainer</title>
-    <link rel="stylesheet" href="/style.css?v=2" />
+    <link rel="stylesheet" href="/style.css?v=3" />
   </head>
   <body>
     <main class="app">
@@ -20,23 +20,30 @@
         </div>
 
         <aside class="panel">
+          <div class="mode-tabs" role="tablist" aria-label="Modo de jogo">
+            <button id="mode-engine" type="button" role="tab">Contra Stockfish</button>
+            <button id="mode-local" type="button" role="tab">2 jogadores</button>
+          </div>
+
           <p id="turn" class="turn">Carregando...</p>
           <p id="message" class="message" role="status"></p>
-          <label for="player-color">Você joga com</label>
-          <select id="player-color">
-            <option value="white">Brancas</option>
-            <option value="black">Pretas</option>
-          </select>
+          <div id="engine-settings">
+            <label for="player-color">Você joga com</label>
+            <select id="player-color">
+              <option value="white">Brancas</option>
+              <option value="black">Pretas</option>
+            </select>
 
-          <label for="opponent-rating">Rating do adversário</label>
-          <select id="opponent-rating">
-            <option value="500">500 — Iniciante</option>
-            <option value="1000">1000 — Casual</option>
-            <option value="1500" selected>1500 — Intermediário</option>
-            <option value="2000">2000 — Avançado</option>
-            <option value="2500">2500 — Mestre</option>
-            <option value="3000">3000 — Elite</option>
-          </select>
+            <label for="opponent-rating">Rating do adversário</label>
+            <select id="opponent-rating">
+              <option value="500">500 — Iniciante</option>
+              <option value="1000">1000 — Casual</option>
+              <option value="1500" selected>1500 — Intermediário</option>
+              <option value="2000">2000 — Avançado</option>
+              <option value="2500">2500 — Mestre</option>
+              <option value="3000">3000 — Elite</option>
+            </select>
+          </div>
 
           <button id="new-game-button" type="button">Nova partida</button>
 
@@ -84,6 +91,6 @@
       </section>
     </main>
 
-    <script src="/app.js?v=2"></script>
+    <script src="/app.js?v=3"></script>
   </body>
 </html>

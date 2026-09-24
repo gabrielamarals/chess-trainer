@@ -10,6 +10,7 @@ class ChessGame:
         self.board = chess.Board()
         self.player_color = chess.WHITE
         self.opponent_rating = DEFAULT_OPPONENT_RATING
+        self.mode = "engine"
         self.history: list[dict[str, object]] = []
         self._reset_history()
 
@@ -17,20 +18,28 @@ class ChessGame:
         self.board.reset()
         self._reset_history()
 
-    def configure(self, player_color: str, opponent_rating: int) -> None:
+    def configure(
+        self,
+        player_color: str,
+        opponent_rating: int,
+        mode: str = "engine",
+    ) -> None:
         if player_color not in {"white", "black"}:
             raise ValueError("O lado do jogador deve ser white ou black.")
         if opponent_rating not in SUPPORTED_RATINGS:
             ratings = ", ".join(str(rating) for rating in SUPPORTED_RATINGS)
             raise ValueError(f"Rating não suportado. Escolha entre: {ratings}.")
+        if mode not in {"engine", "local"}:
+            raise ValueError("O modo deve ser engine ou local.")
 
         self.player_color = chess.WHITE if player_color == "white" else chess.BLACK
         self.opponent_rating = opponent_rating
+        self.mode = mode
 
     def make_move(self, move_text: str, actor: str) -> chess.Move:
         """Valida e executa um movimento no formato UCI, como e2e4."""
-        if actor not in {"human", "engine"}:
-            raise ValueError("O autor do movimento deve ser human ou engine.")
+        if actor not in {"human", "engine", "local"}:
+            raise ValueError("O autor do movimento deve ser human, engine ou local.")
 
         move = self.validate_move(move_text)
         fen_before = self.board.fen()
@@ -108,6 +117,7 @@ class ChessGame:
             "result": outcome.result() if outcome else None,
             "winner": winner,
             "termination": outcome.termination.name.lower() if outcome else None,
+            "mode": self.mode,
             "player_color": "white" if self.player_color == chess.WHITE else "black",
             "opponent_rating": self.opponent_rating,
             "legal_moves": [move.uci() for move in self.board.legal_moves],

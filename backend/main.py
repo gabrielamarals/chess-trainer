@@ -45,10 +45,15 @@ class AnalyseRequest(BaseModel):
 class GameConfigRequest(BaseModel):
     player_color: str = "white"
     opponent_rating: int = DEFAULT_OPPONENT_RATING
+    mode: str = "engine"
 
 
 def play_engine_turn() -> dict | None:
-    if game.board.is_game_over() or game.board.turn == game.player_color:
+    if (
+        game.mode != "engine"
+        or game.board.is_game_over()
+        or game.board.turn == game.player_color
+    ):
         return None
 
     analysis = engine.choose_move(game.board.fen(), game.opponent_rating)
@@ -70,6 +75,20 @@ def get_game() -> dict:
 
 @app.post("/api/game/move")
 def make_move(request: MoveRequest) -> dict:
+    if game.mode == "local":
+        try:
+            local_move = game.make_move(request.move, actor="local")
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return {
+            **game.status(),
+            "player_move": {
+                "move": local_move.uci(),
+                "san": game.history[-1]["san"],
+            },
+            "engine_move": None,
+        }
+
     if game.board.turn != game.player_color:
         raise HTTPException(status_code=400, detail="Agora é a vez do Stockfish.")
 
@@ -138,7 +157,7 @@ def reset_game() -> dict:
 @app.post("/api/game/config")
 def configure_game(request: GameConfigRequest) -> dict:
     try:
-        game.configure(request.player_color, request.opponent_rating)
+        game.configure(request.player_color, request.opponent_rating, request.mode)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
