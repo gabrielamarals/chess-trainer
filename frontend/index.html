@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess Trainer</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <p class="eyebrow">CHESS TRAINER</p>
+        <h1>Aprenda jogando</h1>
+        <p class="subtitle">O backend valida as regras. Este tabuleiro apenas apresenta a posição e envia seus movimentos.</p>
+      </header>
+
+      <section class="game-layout" aria-label="Partida de xadrez">
+        <div id="board" class="board" aria-label="Tabuleiro de xadrez"></div>
+
+        <aside class="panel">
+          <p id="turn" class="turn">Carregando...</p>
+          <p id="message" class="message" role="status"></p>
+          <button id="reset-button" type="button">Reiniciar partida</button>
+
+          <h2>Movimentos</h2>
+          <ol id="history" class="history"></ol>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

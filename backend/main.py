@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .game import ChessGame
@@ -45,3 +48,7 @@ def make_move(request: MoveRequest) -> dict:
 def reset_game() -> dict:
     game.reset()
     return game.status()
+
+
+FRONTEND_DIRECTORY = Path(__file__).resolve().parent.parent / "frontend"
+app.mount("/", StaticFiles(directory=FRONTEND_DIRECTORY, html=True), name="frontend")
