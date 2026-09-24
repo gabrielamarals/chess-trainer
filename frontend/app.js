@@ -29,7 +29,7 @@ const turnElement = document.querySelector("#turn");
 const messageElement = document.querySelector("#message");
 const historyElement = document.querySelector("#history");
 const playerColorElement = document.querySelector("#player-color");
-const engineDepthElement = document.querySelector("#engine-depth");
+const opponentRatingElement = document.querySelector("#opponent-rating");
 const newGameButton = document.querySelector("#new-game-button");
 
 let gameState = null;
@@ -333,9 +333,9 @@ async function submitMove(source, target) {
 function renderGame() {
   renderBoard();
   playerColorElement.value = gameState.player_color;
-  engineDepthElement.value = String(gameState.engine_depth);
+  opponentRatingElement.value = String(gameState.opponent_rating);
   playerColorElement.disabled = isThinking;
-  engineDepthElement.disabled = isThinking;
+  opponentRatingElement.disabled = isThinking;
   newGameButton.disabled = isThinking;
 
   if (isThinking) {
@@ -378,7 +378,7 @@ newGameButton.addEventListener("click", async () => {
   if (isThinking) return;
 
   const playerColor = playerColorElement.value;
-  const engineDepth = Number(engineDepthElement.value);
+  const opponentRating = Number(opponentRatingElement.value);
   const minimumThinkingTime = sleep(MIN_ENGINE_THINK_TIME);
   selectedSquare = null;
   lastMoveOverride = null;
@@ -388,7 +388,7 @@ newGameButton.addEventListener("click", async () => {
     fen: INITIAL_FEN,
     turn: "white",
     player_color: playerColor,
-    engine_depth: engineDepth,
+    opponent_rating: opponentRating,
     is_check: false,
     is_checkmate: false,
     is_stalemate: false,
@@ -402,7 +402,7 @@ newGameButton.addEventListener("click", async () => {
     const response = await fetch("/api/game/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_color: playerColor, engine_depth: engineDepth }),
+      body: JSON.stringify({ player_color: playerColor, opponent_rating: opponentRating }),
     });
 
     if (!response.ok) {

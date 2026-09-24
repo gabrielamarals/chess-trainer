@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from .engine import StockfishEngine, StockfishNotConfigured
+from .engine import DEFAULT_OPPONENT_RATING, StockfishEngine, StockfishNotConfigured
 from .game import ChessGame
 
 
@@ -41,14 +41,14 @@ class AnalyseRequest(BaseModel):
 
 class GameConfigRequest(BaseModel):
     player_color: str = "white"
-    engine_depth: int = 8
+    opponent_rating: int = DEFAULT_OPPONENT_RATING
 
 
 def play_engine_turn() -> dict | None:
     if game.board.is_game_over() or game.board.turn == game.player_color:
         return None
 
-    analysis = engine.analyse(game.board.fen(), depth=game.engine_depth)
+    analysis = engine.choose_move(game.board.fen(), game.opponent_rating)
     if not analysis.best_move:
         return None
 
@@ -111,7 +111,7 @@ def reset_game() -> dict:
 @app.post("/api/game/config")
 def configure_game(request: GameConfigRequest) -> dict:
     try:
-        game.configure(request.player_color, request.engine_depth)
+        game.configure(request.player_color, request.opponent_rating)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 

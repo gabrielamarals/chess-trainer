@@ -25,3 +25,17 @@ sudo dnf install stockfish
 ```
 
 O endpoint `GET /api/engine/status` informa se a engine foi encontrada. A análise pode ser solicitada por `POST /api/engine/analyse`.
+
+## Força do adversário
+
+Ao iniciar uma partida, o frontend envia apenas o rating escolhido. O backend
+transforma esse valor em um perfil do Stockfish definido em
+`backend/engine.py`:
+
+- 500 e 1000 usam candidatos `MultiPV` e seleção ponderada para produzir erros
+  plausíveis sem escolher lances totalmente aleatórios;
+- 1500, 2000, 2500 e 3000 usam a limitação nativa `UCI_LimitStrength` e
+  `UCI_Elo` do Stockfish.
+
+O tempo mínimo visual de pensamento é independente da força e fica na constante
+`MIN_ENGINE_THINK_TIME`, em `frontend/app.js`.

@@ -1,5 +1,7 @@
 import chess
 
+from .engine import DEFAULT_OPPONENT_RATING, SUPPORTED_RATINGS
+
 
 class ChessGame:
     """Mantém o estado de uma única partida local."""
@@ -8,20 +10,21 @@ class ChessGame:
         self.board = chess.Board()
         self.history: list[dict[str, str | int]] = []
         self.player_color = chess.WHITE
-        self.engine_depth = 8
+        self.opponent_rating = DEFAULT_OPPONENT_RATING
 
     def reset(self) -> None:
         self.board.reset()
         self.history.clear()
 
-    def configure(self, player_color: str, engine_depth: int) -> None:
+    def configure(self, player_color: str, opponent_rating: int) -> None:
         if player_color not in {"white", "black"}:
             raise ValueError("O lado do jogador deve ser white ou black.")
-        if not 1 <= engine_depth <= 30:
-            raise ValueError("A profundidade deve estar entre 1 e 30.")
+        if opponent_rating not in SUPPORTED_RATINGS:
+            ratings = ", ".join(str(rating) for rating in SUPPORTED_RATINGS)
+            raise ValueError(f"Rating não suportado. Escolha entre: {ratings}.")
 
         self.player_color = chess.WHITE if player_color == "white" else chess.BLACK
-        self.engine_depth = engine_depth
+        self.opponent_rating = opponent_rating
 
     def make_move(self, move_text: str) -> chess.Move:
         """Valida e executa um movimento no formato UCI, como e2e4."""
@@ -54,7 +57,7 @@ class ChessGame:
             "is_stalemate": self.board.is_stalemate(),
             "is_game_over": self.board.is_game_over(),
             "player_color": "white" if self.player_color == chess.WHITE else "black",
-            "engine_depth": self.engine_depth,
+            "opponent_rating": self.opponent_rating,
             "legal_moves": [move.uci() for move in self.board.legal_moves],
             "history": self.history,
         }
