@@ -7,10 +7,13 @@ const boardElement = document.querySelector("#board");
 const turnElement = document.querySelector("#turn");
 const messageElement = document.querySelector("#message");
 const historyElement = document.querySelector("#history");
-const resetButton = document.querySelector("#reset-button");
+const playerColorElement = document.querySelector("#player-color");
+const engineDepthElement = document.querySelector("#engine-depth");
+const newGameButton = document.querySelector("#new-game-button");
 
 let gameState = null;
 let selectedSquare = null;
+let isThinking = false;
 
 function parseFen(fen) {
   const rows = fen.split(" ")[0].split("/");
@@ -48,6 +51,7 @@ function renderBoard() {
     const square = document.createElement("button");
     const name = squareName(index);
     square.type = "button";
+    square.disabled = isThinking;
     square.className = `square ${(Math.floor(index / 8) + index) % 2 === 0 ? "light" : "dark"}`;
     square.dataset.square = name;
     square.setAttribute("aria-label", `${name}${piece ? `, ${piece}` : " vazia"}`);
@@ -112,6 +116,8 @@ async function submitMove(source, target) {
     return;
   }
 
+  isThinking = true;
+  renderBoard();
   const response = await fetch("/api/game/move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -121,11 +127,13 @@ async function submitMove(source, target) {
   if (!response.ok) {
     const error = await response.json();
     messageElement.textContent = error.detail || "Não foi possível fazer o movimento.";
+    isThinking = false;
     await loadGame();
     return;
   }
 
   gameState = await response.json();
+  isThinking = false;
   renderGame();
 }
 
@@ -133,7 +141,9 @@ function renderGame() {
   renderBoard();
   turnElement.textContent = gameState.is_game_over
     ? "Partida encerrada"
-    : `Vez das ${gameState.turn === "white" ? "brancas" : "pretas"}`;
+    : gameState.turn === gameState.player_color
+      ? `Sua vez — ${gameState.turn === "white" ? "brancas" : "pretas"}`
+      : "Stockfish está pensando...";
 
   if (gameState.is_checkmate) {
     messageElement.textContent = "Xeque-mate!";
@@ -141,8 +151,10 @@ function renderGame() {
     messageElement.textContent = "Afogamento: empate.";
   } else if (gameState.is_check) {
     messageElement.textContent = "Xeque.";
+  } else if (isThinking) {
+    messageElement.textContent = "Stockfish está pensando...";
   } else {
-    messageElement.textContent = "Selecione uma peça ou arraste-a para uma casa.";
+    messageElement.textContent = `Stockfish — profundidade ${gameState.engine_depth}. Selecione uma peça ou arraste-a para uma casa.`;
   }
 
   historyElement.replaceChildren();
@@ -159,10 +171,26 @@ async function loadGame() {
   renderGame();
 }
 
-resetButton.addEventListener("click", async () => {
-  const response = await fetch("/api/game/reset", { method: "POST" });
+newGameButton.addEventListener("click", async () => {
+  isThinking = true;
+  renderBoard();
+  const response = await fetch("/api/game/config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player_color: playerColorElement.value,
+      engine_depth: Number(engineDepthElement.value),
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    isThinking = false;
+    messageElement.textContent = error.detail || "Não foi possível iniciar a partida.";
+    return;
+  }
   gameState = await response.json();
   selectedSquare = null;
+  isThinking = false;
   renderGame();
 });
 

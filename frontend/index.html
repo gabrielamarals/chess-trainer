@@ -20,7 +20,20 @@
         <aside class="panel">
           <p id="turn" class="turn">Carregando...</p>
           <p id="message" class="message" role="status"></p>
-          <button id="reset-button" type="button">Reiniciar partida</button>
+          <label for="player-color">Você joga com</label>
+          <select id="player-color">
+            <option value="white">Brancas</option>
+            <option value="black">Pretas</option>
+          </select>
+
+          <label for="engine-depth">Força inicial</label>
+          <select id="engine-depth">
+            <option value="6">Rápida</option>
+            <option value="8" selected>Normal</option>
+            <option value="12">Mais forte</option>
+          </select>
+
+          <button id="new-game-button" type="button">Nova partida</button>
 
           <h2>Movimentos</h2>
           <ol id="history" class="history"></ol>

@@ -39,6 +39,27 @@ class AnalyseRequest(BaseModel):
     depth: int | None = None
 
 
+class GameConfigRequest(BaseModel):
+    player_color: str = "white"
+    engine_depth: int = 8
+
+
+def play_engine_turn() -> dict | None:
+    if game.board.is_game_over() or game.board.turn == game.player_color:
+        return None
+
+    analysis = engine.analyse(game.board.fen(), depth=game.engine_depth)
+    if not analysis.best_move:
+        return None
+
+    move = game.make_move(analysis.best_move)
+    return {
+        "move": move.uci(),
+        "san": game.history[-1]["san"],
+        "analysis": analysis.as_dict(),
+    }
+
+
 @app.get("/api/game")
 def get_game() -> dict:
     return game.status()
@@ -46,21 +67,60 @@ def get_game() -> dict:
 
 @app.post("/api/game/move")
 def make_move(request: MoveRequest) -> dict:
+    if game.board.turn != game.player_color:
+        raise HTTPException(status_code=400, detail="Agora é a vez do Stockfish.")
+
+    if not engine.is_available:
+        raise HTTPException(
+            status_code=503,
+            detail="Stockfish não encontrado. Instale-o antes de jogar contra a engine.",
+        )
+
     try:
-        move = game.make_move(request.move)
+        player_move = game.make_move(request.move)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     response = game.status()
-    response["move"] = move.uci()
+    response["player_move"] = {
+        "move": player_move.uci(),
+        "san": game.history[-1]["san"],
+    }
     response["san"] = game.history[-1]["san"]
+
+    try:
+        response["engine_move"] = play_engine_turn()
+    except StockfishNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    response.update(game.status())
     return response
 
 
 @app.post("/api/game/reset")
 def reset_game() -> dict:
     game.reset()
-    return game.status()
+    response = game.status()
+    try:
+        response["engine_move"] = play_engine_turn()
+    except StockfishNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return {**game.status(), "engine_move": response["engine_move"]}
+
+
+@app.post("/api/game/config")
+def configure_game(request: GameConfigRequest) -> dict:
+    try:
+        game.configure(request.player_color, request.engine_depth)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    game.reset()
+    try:
+        engine_move = play_engine_turn()
+    except StockfishNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return {**game.status(), "engine_move": engine_move}
 
 
 @app.get("/api/engine/status")

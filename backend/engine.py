@@ -62,7 +62,11 @@ class StockfishEngine:
 
     def close(self) -> None:
         if self._engine is not None:
-            self._engine.quit()
+            try:
+                self._engine.quit()
+            except chess.engine.EngineError:
+                # O processo pode já ter sido encerrado pelo sistema operacional.
+                pass
             self._engine = None
 
     def analyse(

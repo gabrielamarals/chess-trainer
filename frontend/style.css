@@ -108,6 +108,24 @@ h1 {
   box-shadow: 0 10px 25px rgb(48 36 24 / 6%);
 }
 
+.panel label {
+  display: block;
+  margin-top: 0.85rem;
+  margin-bottom: 0.3rem;
+  color: #6a6259;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.panel select {
+  width: 100%;
+  border: 1px solid #cfc7bd;
+  border-radius: 6px;
+  padding: 0.65rem;
+  background: white;
+  font: inherit;
+}
+
 .turn {
   margin-bottom: 0.5rem;
   font-size: 1.2rem;
@@ -120,7 +138,7 @@ h1 {
   line-height: 1.4;
 }
 
-button#reset-button {
+button#new-game-button {
   width: 100%;
   border: 0;
   border-radius: 6px;
@@ -132,7 +150,7 @@ button#reset-button {
   font-weight: 700;
 }
 
-button#reset-button:hover {
+button#new-game-button:hover {
   background: #5a4431;
 }
 
