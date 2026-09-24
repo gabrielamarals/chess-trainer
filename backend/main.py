@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .analysis import build_move_analysis
+from .coach import build_coach_prompt
 from .engine import DEFAULT_OPPONENT_RATING, StockfishEngine, StockfishNotConfigured
 from .game import ChessGame
 
@@ -22,6 +24,7 @@ app.add_middleware(
 
 game = ChessGame()
 engine = StockfishEngine()
+MOVE_ANALYSIS_TIME = 0.2
 
 
 @app.on_event("shutdown")
@@ -77,9 +80,33 @@ def make_move(request: MoveRequest) -> dict:
         )
 
     try:
-        player_move = game.make_move(request.move)
+        player_move = game.validate_move(request.move)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+    board_before = game.board.copy()
+    board_after = board_before.copy()
+    board_after.push(player_move)
+
+    try:
+        analysis_before = engine.analyse(
+            board_before.fen(), time_limit=MOVE_ANALYSIS_TIME
+        )
+        analysis_after = engine.analyse(
+            board_after.fen(), time_limit=MOVE_ANALYSIS_TIME
+        )
+    except StockfishNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    game.make_move(player_move.uci())
+    move_analysis = build_move_analysis(
+        board_before,
+        player_move,
+        analysis_before,
+        analysis_after,
+    )
+    move_analysis["coach_prompt"] = build_coach_prompt(move_analysis)
+    game.attach_analysis_to_last_move(move_analysis)
 
     response = game.status()
     response["player_move"] = {

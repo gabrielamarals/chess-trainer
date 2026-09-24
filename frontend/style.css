@@ -258,6 +258,104 @@ h2 {
   font-size: 1rem;
 }
 
+.analysis-card {
+  margin-top: 1.25rem;
+  border-top: 1px solid #e5ded5;
+  padding-top: 1.1rem;
+}
+
+.analysis-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.analysis-heading h2 {
+  margin: 0;
+}
+
+.analysis-badge {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  background: #ece8e1;
+  color: #504941;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.analysis-badge.best,
+.analysis-badge.excellent {
+  background: #dcebdc;
+  color: #245c31;
+}
+
+.analysis-badge.good {
+  background: #e3eee7;
+  color: #356047;
+}
+
+.analysis-badge.inaccuracy {
+  background: #f5edcd;
+  color: #795f12;
+}
+
+.analysis-badge.mistake {
+  background: #f6dfc9;
+  color: #8a4818;
+}
+
+.analysis-badge.blunder {
+  background: #f3d6d4;
+  color: #8b2924;
+}
+
+.analysis-empty,
+.analysis-summary,
+.analysis-line {
+  margin: 0.75rem 0 0;
+  color: #6a6259;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.analysis-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.9rem 0 0;
+}
+
+.analysis-details div {
+  min-width: 0;
+}
+
+.analysis-details dt {
+  color: #81786e;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.analysis-details dd {
+  margin: 0.15rem 0 0;
+  color: #302b27;
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.analysis-line {
+  border-left: 3px solid #c9b99f;
+  padding-left: 0.65rem;
+}
+
+.analysis-badge[hidden],
+.analysis-details[hidden],
+.analysis-line[hidden] {
+  display: none;
+}
+
 .history {
   max-height: 280px;
   margin: 0;

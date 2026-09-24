@@ -39,3 +39,25 @@ transforma esse valor em um perfil do Stockfish definido em
 
 O tempo mínimo visual de pensamento é independente da força e fica na constante
 `MIN_ENGINE_THINK_TIME`, em `frontend/app.js`.
+
+## Análise da jogada
+
+Depois de cada movimento humano, o backend analisa a posição antes e depois com
+o Stockfish. A comparação é feita pela perspectiva do jogador e retorna melhor
+lance, avaliações, perda em centipawns, variante principal e eventos objetivos
+detectados pelo `python-chess`.
+
+A classificação inicial usa estes limites:
+
+- até 20 centipawns: excelente;
+- até 60: boa;
+- até 120: imprecisão;
+- até 250: erro;
+- acima de 250: erro grave.
+
+Melhor lance, xeque-mate e afogamento recebem tratamento específico. Esses
+critérios são nossos e podem evoluir conforme os testes do treinador.
+
+`backend/coach.py` já prepara `system_prompt` e `user_prompt` com o contexto
+estruturado. Nenhuma LLM é chamada nesta etapa; o futuro adaptador do Ollama só
+precisará enviar esses textos e devolver a explicação.

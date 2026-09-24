@@ -40,6 +40,35 @@
 
           <button id="new-game-button" type="button">Nova partida</button>
 
+          <section class="analysis-card" aria-labelledby="analysis-title">
+            <div class="analysis-heading">
+              <h2 id="analysis-title">Análise da sua jogada</h2>
+              <span id="analysis-classification" class="analysis-badge" hidden></span>
+            </div>
+            <p id="analysis-summary" class="analysis-empty">
+              Faça um movimento para receber a avaliação do Stockfish.
+            </p>
+            <dl id="analysis-details" class="analysis-details" hidden>
+              <div>
+                <dt>Seu lance</dt>
+                <dd id="analysis-move">—</dd>
+              </div>
+              <div>
+                <dt>Melhor lance</dt>
+                <dd id="analysis-best-move">—</dd>
+              </div>
+              <div>
+                <dt>Avaliação</dt>
+                <dd id="analysis-evaluation">—</dd>
+              </div>
+              <div>
+                <dt>Perda</dt>
+                <dd id="analysis-loss">—</dd>
+              </div>
+            </dl>
+            <p id="analysis-line" class="analysis-line" hidden></p>
+          </section>
+
           <h2>Movimentos</h2>
           <ol id="history" class="history"></ol>
         </aside>

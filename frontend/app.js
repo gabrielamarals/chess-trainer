@@ -31,6 +31,14 @@ const historyElement = document.querySelector("#history");
 const playerColorElement = document.querySelector("#player-color");
 const opponentRatingElement = document.querySelector("#opponent-rating");
 const newGameButton = document.querySelector("#new-game-button");
+const analysisClassificationElement = document.querySelector("#analysis-classification");
+const analysisSummaryElement = document.querySelector("#analysis-summary");
+const analysisDetailsElement = document.querySelector("#analysis-details");
+const analysisMoveElement = document.querySelector("#analysis-move");
+const analysisBestMoveElement = document.querySelector("#analysis-best-move");
+const analysisEvaluationElement = document.querySelector("#analysis-evaluation");
+const analysisLossElement = document.querySelector("#analysis-loss");
+const analysisLineElement = document.querySelector("#analysis-line");
 
 let gameState = null;
 let selectedSquare = null;
@@ -42,6 +50,58 @@ let isThinking = false;
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function formatEvaluation(centipawns, mateIn = null) {
+  if (mateIn !== null) {
+    return mateIn > 0 ? `Mate em ${mateIn}` : `Risco de mate em ${Math.abs(mateIn)}`;
+  }
+  if (centipawns === null || centipawns === undefined) return "—";
+  const pawns = centipawns / 100;
+  return `${pawns >= 0 ? "+" : ""}${pawns.toFixed(2)}`;
+}
+
+function renderAnalysis() {
+  const analysis = gameState.last_analysis;
+  if (!analysis) {
+    analysisClassificationElement.hidden = true;
+    analysisDetailsElement.hidden = true;
+    analysisLineElement.hidden = true;
+    analysisSummaryElement.className = "analysis-empty";
+    analysisSummaryElement.textContent = "Faça um movimento para receber a avaliação do Stockfish.";
+    return;
+  }
+
+  const classification = analysis.classification;
+  const evaluation = analysis.evaluation;
+  const allowedClasses = new Set([
+    "best", "excellent", "good", "inaccuracy", "mistake", "blunder", "unrated",
+  ]);
+  const classificationClass = allowedClasses.has(classification.code)
+    ? classification.code
+    : "unrated";
+
+  analysisClassificationElement.hidden = false;
+  analysisClassificationElement.className = `analysis-badge ${classificationClass}`;
+  analysisClassificationElement.textContent = classification.label;
+  analysisSummaryElement.className = "analysis-summary";
+  analysisSummaryElement.textContent = classification.reason;
+
+  analysisDetailsElement.hidden = false;
+  analysisMoveElement.textContent = analysis.move.san;
+  analysisBestMoveElement.textContent = analysis.best_move.san || "—";
+  const evaluationBefore = formatEvaluation(evaluation.before_cp, evaluation.before_mate);
+  const evaluationAfter = formatEvaluation(evaluation.after_cp, evaluation.after_mate);
+  analysisEvaluationElement.textContent = `${evaluationBefore} → ${evaluationAfter}`;
+  analysisLossElement.textContent = evaluation.loss_cp === null
+    ? "—"
+    : `${(evaluation.loss_cp / 100).toFixed(2)} ponto(s)`;
+
+  const line = analysis.principal_variation.san;
+  analysisLineElement.hidden = line.length === 0;
+  analysisLineElement.textContent = line.length
+    ? `Linha sugerida: ${line.join(" ")}`
+    : "";
 }
 
 function parseFen(fen) {
@@ -332,6 +392,7 @@ async function submitMove(source, target) {
 
 function renderGame() {
   renderBoard();
+  renderAnalysis();
   playerColorElement.value = gameState.player_color;
   opponentRatingElement.value = String(gameState.opponent_rating);
   playerColorElement.disabled = isThinking;
@@ -395,6 +456,7 @@ newGameButton.addEventListener("click", async () => {
     is_game_over: false,
     legal_moves: [],
     history: [],
+    last_analysis: null,
   };
   renderGame();
 
