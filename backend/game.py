@@ -6,9 +6,11 @@ class ChessGame:
 
     def __init__(self) -> None:
         self.board = chess.Board()
+        self.history: list[dict[str, str | int]] = []
 
     def reset(self) -> None:
         self.board.reset()
+        self.history.clear()
 
     def make_move(self, move_text: str) -> chess.Move:
         """Valida e executa um movimento no formato UCI, como e2e4."""
@@ -20,10 +22,19 @@ class ChessGame:
         if move not in self.board.legal_moves:
             raise ValueError("Esse movimento não é legal nesta posição.")
 
+        san = self.board.san(move)
         self.board.push(move)
+        self.history.append(
+            {
+                "ply": len(self.history) + 1,
+                "move": move.uci(),
+                "san": san,
+                "fen": self.board.fen(),
+            }
+        )
         return move
 
-    def status(self) -> dict[str, bool | str]:
+    def status(self) -> dict:
         return {
             "fen": self.board.fen(),
             "turn": "white" if self.board.turn == chess.WHITE else "black",
@@ -31,4 +42,6 @@ class ChessGame:
             "is_checkmate": self.board.is_checkmate(),
             "is_stalemate": self.board.is_stalemate(),
             "is_game_over": self.board.is_game_over(),
+            "legal_moves": [move.uci() for move in self.board.legal_moves],
+            "history": self.history,
         }

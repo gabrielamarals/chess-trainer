@@ -24,12 +24,12 @@ class MoveRequest(BaseModel):
 
 
 @app.get("/api/game")
-def get_game() -> dict[str, bool | str]:
+def get_game() -> dict:
     return game.status()
 
 
 @app.post("/api/game/move")
-def make_move(request: MoveRequest) -> dict[str, bool | str]:
+def make_move(request: MoveRequest) -> dict:
     try:
         move = game.make_move(request.move)
     except ValueError as error:
@@ -37,10 +37,11 @@ def make_move(request: MoveRequest) -> dict[str, bool | str]:
 
     response = game.status()
     response["move"] = move.uci()
+    response["san"] = game.history[-1]["san"]
     return response
 
 
 @app.post("/api/game/reset")
-def reset_game() -> dict[str, bool | str]:
+def reset_game() -> dict:
     game.reset()
     return game.status()
