@@ -34,8 +34,8 @@ transforma esse valor em um perfil do Stockfish definido em
 
 - 500 e 1000 usam candidatos `MultiPV` e seleção ponderada para produzir erros
   plausíveis sem escolher lances totalmente aleatórios;
-- 1500, 2000, 2500 e 3000 usam a limitação nativa `UCI_LimitStrength` e
-  `UCI_Elo` do Stockfish.
+- 1500, 2000 e 2500 usam a limitação nativa `UCI_LimitStrength` e `UCI_Elo`;
+- 3000 representa o Stockfish em força total, sem limitação de Elo.
 
 O tempo mínimo visual de pensamento é independente da força e fica na constante
 `MIN_ENGINE_THINK_TIME`, em `frontend/app.js`.

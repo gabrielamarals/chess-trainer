@@ -38,7 +38,7 @@ RATING_PROFILES = {
     1500: RatingProfile(mode="uci_elo"),
     2000: RatingProfile(mode="uci_elo"),
     2500: RatingProfile(mode="uci_elo"),
-    3000: RatingProfile(mode="uci_elo"),
+    3000: RatingProfile(mode="full_strength"),
 }
 SUPPORTED_RATINGS = tuple(RATING_PROFILES)
 DEFAULT_OPPONENT_RATING = 1500
@@ -134,8 +134,11 @@ class StockfishEngine:
         self.start()
         limit = chess.engine.Limit(time=time_limit)
 
-        if profile.mode == "uci_elo":
-            self._configure_native_rating(opponent_rating)
+        if profile.mode in {"uci_elo", "full_strength"}:
+            if profile.mode == "full_strength":
+                self._configure_full_strength()
+            else:
+                self._configure_native_rating(opponent_rating)
             result = self._engine.play(  # type: ignore[union-attr]
                 board,
                 limit,
