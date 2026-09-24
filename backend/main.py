@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .engine import StockfishEngine, StockfishNotConfigured
 from .game import ChessGame
 
 
@@ -20,10 +21,22 @@ app.add_middleware(
 )
 
 game = ChessGame()
+engine = StockfishEngine()
+
+
+@app.on_event("shutdown")
+def close_engine() -> None:
+    engine.close()
 
 
 class MoveRequest(BaseModel):
     move: str
+
+
+class AnalyseRequest(BaseModel):
+    fen: str | None = None
+    time_limit: float = 0.2
+    depth: int | None = None
 
 
 @app.get("/api/game")
@@ -48,6 +61,31 @@ def make_move(request: MoveRequest) -> dict:
 def reset_game() -> dict:
     game.reset()
     return game.status()
+
+
+@app.get("/api/engine/status")
+def engine_status() -> dict[str, bool | str | None]:
+    return {
+        "available": engine.is_available,
+        "path": engine.path,
+    }
+
+
+@app.post("/api/engine/analyse")
+def analyse_position(request: AnalyseRequest) -> dict:
+    fen = request.fen or game.board.fen()
+    try:
+        analysis = engine.analyse(
+            fen=fen,
+            time_limit=request.time_limit,
+            depth=request.depth,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=f"FEN inválida: {error}") from error
+    except StockfishNotConfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    return {"fen": fen, "analysis": analysis.as_dict()}
 
 
 FRONTEND_DIRECTORY = Path(__file__).resolve().parent.parent / "frontend"
